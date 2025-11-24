@@ -101,20 +101,21 @@
                         </div>
                         <div class="grid grid-cols-2 gap-3">
                             <div class="input-group">
-                                <label for="currentAge">Current Age</label>
+                                <label for="currentAge">Your Current Age</label>
                                 <input type="number" id="currentAge" value="30" oninput="calculate()">
                             </div>
                             <div class="input-group">
-                                <label for="retirementAge">Retirement Age</label>
+                                <label for="retirementAge">Your Retirement Age</label>
                                 <input type="number" id="retirementAge" value="60" oninput="calculate()">
                             </div>
                         </div>
                         <div class="input-group">
-                            <label for="yearsInRetirement">Years in Retirement</label>
+                            <label for="yearsInRetirement">Years in Retirement (for you)</label>
                             <input type="number" id="yearsInRetirement" value="30" oninput="calculate()">
                         </div>
+                        
                         <div class="input-group">
-                            <label id="salaryLabel" for="currentSalary">Current Gross Annual Salary ($)</label>
+                            <label id="salaryLabel" for="currentSalary">Your Gross Annual Salary ($)</label>
                             <input type="number" id="currentSalary" value="80000" step="1000" oninput="calculate()">
                         </div>
 
@@ -122,6 +123,18 @@
                         <div class="input-group hidden" id="spouseSalaryGroup">
                             <label for="spouseSalary">Spouse's Gross Annual Salary ($)</label>
                             <input type="number" id="spouseSalary" value="0" step="1000" oninput="calculate()">
+                        </div>
+
+                        <!-- Spouse Ages (Hidden by default) -->
+                        <div class="grid grid-cols-2 gap-3 hidden" id="spouseAgeGroup">
+                            <div class="input-group">
+                                <label for="spouseCurrentAge">Spouse Current Age</label>
+                                <input type="number" id="spouseCurrentAge" value="30" oninput="calculate()">
+                            </div>
+                            <div class="input-group">
+                                <label for="spouseRetirementAge">Spouse Retirement Age</label>
+                                <input type="number" id="spouseRetirementAge" value="60" oninput="calculate()">
+                            </div>
                         </div>
 
                         <div class="input-group">
@@ -391,7 +404,8 @@
                         <table class="min-w-full text-sm text-left text-gray-500">
                             <thead class="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0 z-10">
                                 <tr>
-                                    <th scope="col" class="px-6 py-3">Age</th>
+                                    <th scope="col" class="px-6 py-3">Your Age</th>
+                                    <th scope="col" class="px-6 py-3">Spouse Age</th>
                                     <th scope="col" class="px-6 py-3">Year</th>
                                     <th scope="col" class="px-6 py-3">Start Balance</th>
                                     <th scope="col" class="px-6 py-3">Cash Flow (+/-)</th>
@@ -450,17 +464,20 @@
             const retIncomeLabel = document.getElementById('retIncomeLabel');
             const resSalaryType = document.getElementById('resSalaryType');
             const spouseEmployerGroup = document.getElementById('spouseEmployerGroup');
+            const spouseAgeGroup = document.getElementById('spouseAgeGroup');
 
             if (status === 'married') {
                 spouseGroup.classList.remove('hidden');
                 spouseEmployerGroup.classList.remove('hidden');
+                spouseAgeGroup.classList.remove('hidden');
                 salaryLabel.innerText = "Your Gross Annual Salary ($)";
                 retIncomeLabel.innerText = "Desired Joint Retirement Income ($ Today)";
                 resSalaryType.innerText = "household income";
             } else {
                 spouseGroup.classList.add('hidden');
                 spouseEmployerGroup.classList.add('hidden');
-                salaryLabel.innerText = "Current Gross Annual Salary ($)";
+                spouseAgeGroup.classList.add('hidden');
+                salaryLabel.innerText = "Your Gross Annual Salary ($)";
                 retIncomeLabel.innerText = "Desired Retirement Income ($ Today)";
                 resSalaryType.innerText = "gross salary";
             }
@@ -488,7 +505,7 @@
                 if (!isFinite(val)) val = 0;
                 if (val < 0) val = 0;
                 if (val > 100) val = 100;
-                el.value = val; // clamp UI value
+                el.value = val; // clamp UI
                 totalAlloc += val;
                 weightedReturn += val * a.er;
 
@@ -595,6 +612,18 @@
             if (!isFinite(yearsInRetirement)) yearsInRetirement = 30;
             yearsInRetirement = clampValue(yearsInRetirement, 5, 50);
             document.getElementById('yearsInRetirement').value = yearsInRetirement;
+
+            // Spouse ages
+            let spouseCurrentAgeRaw = parseFloat(document.getElementById('spouseCurrentAge').value);
+            let spouseRetirementAgeRaw = parseFloat(document.getElementById('spouseRetirementAge').value);
+            let spouseCurrentAge = isFinite(spouseCurrentAgeRaw) ? spouseCurrentAgeRaw : currentAge;
+            let spouseRetirementAge = isFinite(spouseRetirementAgeRaw) ? spouseRetirementAgeRaw : retirementAge;
+
+            spouseCurrentAge = clampValue(spouseCurrentAge, 18, 80);
+            spouseRetirementAge = clampValue(spouseRetirementAge, spouseCurrentAge + 1, 80);
+
+            document.getElementById('spouseCurrentAge').value = spouseCurrentAge;
+            document.getElementById('spouseRetirementAge').value = spouseRetirementAge;
 
             const userSalaryRaw = parseFloat(document.getElementById('currentSalary').value);
             const userSalary = Math.max(userSalaryRaw || 0, 0);
@@ -730,7 +759,9 @@
                 ssFullyCovers,
                 employerSelfRate,
                 employerSpouseRate,
-                maritalStatus
+                maritalStatus,
+                spouseCurrentAge,
+                spouseRetirementAge
             };
         }
 
@@ -836,7 +867,7 @@
 
             resEmployeeRate.innerText = empRateDisplay;
 
-            // Employer detail line (when married)
+            // Employer detail line (when married), including spouse age info
             if (plan.maritalStatus === 'married') {
                 const parts = [];
                 if (plan.employerSelfRate > 0) {
@@ -845,6 +876,7 @@
                 if (plan.employerSpouseRate > 0) {
                     parts.push(`Spouse's employer contributes ~${plan.employerSpouseRate.toFixed(1)}% of their pay.`);
                 }
+                parts.push(`Spouse is currently age ${plan.spouseCurrentAge.toFixed(0)} with a target retirement age of ${plan.spouseRetirementAge.toFixed(0)}.`);
                 resEmployerDetail.textContent = parts.join(' ');
             } else {
                 resEmployerDetail.textContent = "";
@@ -868,11 +900,27 @@
                 plan.effMarketReturn,
                 plan.effInflation,
                 plan.targetPortfolio,
-                plan.netFutureWithdrawal
+                plan.netFutureWithdrawal,
+                plan.spouseCurrentAge,
+                plan.maritalStatus,
+                plan.spouseRetirementAge
             );
         }
 
-        function generateBreakdown(startAge, retAge, yearsRet, startBal, firstYearSav, returnRate, inflationRate, target, initialNetWithdrawal) {
+        function generateBreakdown(
+            startAge,
+            retAge,
+            yearsRet,
+            startBal,
+            firstYearSav,
+            returnRate,
+            inflationRate,
+            target,
+            initialNetWithdrawal,
+            spouseStartAge,
+            maritalStatus,
+            spouseRetAge
+        ) {
             const tableBody = document.getElementById('breakdownTableBody');
             tableBody.innerHTML = ""; // Clear existing
 
@@ -885,6 +933,20 @@
             const dataBalance = [];
             const dataTarget = [];
 
+            let spouseRetMarkerAgeInt = null;
+            let spouseMarkerAdded = false;
+
+            if (maritalStatus === 'married' && isFinite(spouseStartAge) && isFinite(spouseRetAge)) {
+                const markerAge = startAge + (spouseRetAge - spouseStartAge);
+                spouseRetMarkerAgeInt = Math.round(markerAge);
+            }
+
+            function spouseAgeForPrimaryAge(age) {
+                if (maritalStatus !== 'married' || !isFinite(spouseStartAge)) return '-';
+                const sAge = spouseStartAge + (age - startAge);
+                return sAge.toFixed(0);
+            }
+
             // Accumulation phase
             for (let age = startAge; age < retAge; age++) {
                 const row = document.createElement('tr');
@@ -893,8 +955,11 @@
                 let investmentGrowth = balance * returnRate;
                 let endBalance = balance + investmentGrowth + contribution;
 
+                const spouseAgeDisplay = spouseAgeForPrimaryAge(age);
+
                 row.innerHTML = `
                     <td class="px-6 py-4 font-medium text-gray-900">${age}</td>
+                    <td class="px-6 py-4">${spouseAgeDisplay}</td>
                     <td class="px-6 py-4">${currentYear}</td>
                     <td class="px-6 py-4">${formatCurrency(balance)}</td>
                     <td class="px-6 py-4 text-green-600">+${formatCurrency(contribution)}</td>
@@ -902,6 +967,20 @@
                     <td class="px-6 py-4 font-bold">${formatCurrency(endBalance)}</td>
                 `;
                 tableBody.appendChild(row);
+
+                // Spouse retirement marker
+                if (!spouseMarkerAdded && spouseRetMarkerAgeInt !== null && age === spouseRetMarkerAgeInt) {
+                    const markerRow = document.createElement('tr');
+                    markerRow.className = "bg-purple-100 font-bold";
+                    const sAge = spouseAgeForPrimaryAge(age);
+                    markerRow.innerHTML = `
+                        <td colspan="7" class="px-6 py-2 text-center text-purple-800">
+                            Spouse reaches target retirement age (Spouse age ${sAge}, Your age ${age})
+                        </td>
+                    `;
+                    tableBody.appendChild(markerRow);
+                    spouseMarkerAdded = true;
+                }
 
                 labels.push(age);
                 dataBalance.push(balance);
@@ -917,7 +996,7 @@
 
             const separatorRow = document.createElement('tr');
             separatorRow.className = "bg-blue-100 font-bold";
-            separatorRow.innerHTML = `<td colspan="6" class="px-6 py-2 text-center text-blue-800">RETIREMENT STARTED</td>`;
+            separatorRow.innerHTML = `<td colspan="7" class="px-6 py-2 text-center text-blue-800">RETIREMENT STARTED (Primary)</td>`;
             tableBody.appendChild(separatorRow);
 
             for (let age = retAge; age <= endAge; age++) {
@@ -934,8 +1013,11 @@
                     withdrawal = 0;
                 }
 
+                const spouseAgeDisplay = spouseAgeForPrimaryAge(age);
+
                 row.innerHTML = `
                     <td class="px-6 py-4 font-medium text-gray-900">${age}</td>
+                    <td class="px-6 py-4">${spouseAgeDisplay}</td>
                     <td class="px-6 py-4">${currentYear}</td>
                     <td class="px-6 py-4">${formatCurrency(balance)}</td>
                     <td class="px-6 py-4 text-red-600">-${formatCurrency(withdrawal)}</td>
@@ -943,6 +1025,20 @@
                     <td class="px-6 py-4 font-bold ${endBalance < 0 ? 'text-red-600' : ''}">${formatCurrency(endBalance)}</td>
                 `;
                 tableBody.appendChild(row);
+
+                // Spouse retirement marker if happens during retirement phase and not yet added
+                if (!spouseMarkerAdded && spouseRetMarkerAgeInt !== null && age === spouseRetMarkerAgeInt) {
+                    const markerRow = document.createElement('tr');
+                    markerRow.className = "bg-purple-100 font-bold";
+                    const sAge = spouseAgeForPrimaryAge(age);
+                    markerRow.innerHTML = `
+                        <td colspan="7" class="px-6 py-2 text-center text-purple-800">
+                            Spouse reaches target retirement age (Spouse age ${sAge}, Your age ${age})
+                        </td>
+                    `;
+                    tableBody.appendChild(markerRow);
+                    spouseMarkerAdded = true;
+                }
 
                 labels.push(age);
                 dataBalance.push(balance);
@@ -1007,7 +1103,7 @@
                         x: {
                             title: {
                                 display: true,
-                                text: 'Age'
+                                text: 'Your Age (Primary)'
                             }
                         }
                     },
