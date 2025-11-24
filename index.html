@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retirement Savings Rate Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+
+        .input-group label { font-size: 0.875rem; font-weight: 500; color: #374151; }
+        .input-group input, .input-group select { 
+            width: 100%; 
+            padding: 0.5rem; 
+            border: 1px solid #d1d5db; 
+            border-radius: 0.375rem; 
+            margin-top: 0.25rem;
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out, transform 0.1s ease-in-out;
+            background-color: white;
+        }
+        .input-group input:focus, .input-group select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            transform: translateY(-1px);
+        }
+        .result-card {
+            background: white;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            box-shadow: 0 10px 25px -10px rgba(15, 23, 42, 0.25);
+            border-left: 4px solid #3b82f6;
+            transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+        }
+        .result-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 30px -12px rgba(15, 23, 42, 0.3);
+        }
+
+        /* Custom scrollbar for table */
+        .table-container::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        .table-container::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        .table-container::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        .table-container::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+    </style>
+</head>
+<body class="text-gray-800 p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto space-y-6">
+        <!-- Header -->
+        <header class="mb-4">
+            <div class="rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500 p-[1px] shadow-lg">
+                <div class="bg-white rounded-2xl px-6 py-5 md:px-8 md:py-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                        <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">
+                            Retirement Savings Calculator
+                        </h1>
+                        <p class="text-gray-600 mt-1">
+                            Estimate how much you need to save to reach Financial Independence using a safe withdrawal rate.
+                        </p>
+                    </div>
+                    <div class="flex flex-col items-start md:items-end text-sm text-gray-500">
+                        <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 mb-2">
+                            Live, interactive projection
+                        </span>
+                        <span>Adjust assumptions in real time and see how the path changes.</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- Inputs Section -->
+            <div class="lg:col-span-1 space-y-6">
+                
+                <!-- Personal Details -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                    <h2 class="text-lg font-semibold mb-4 text-gray-800 border-b pb-2 flex items-center">
+                        <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-600 text-xs font-bold mr-2">1</span>
+                        Personal Details
+                    </h2>
+                    <div class="space-y-4">
+                        <div class="input-group">
+                            <label for="maritalStatus">Marital Status</label>
+                            <select id="maritalStatus" onchange="toggleSpouse(); calculate()" class="cursor-pointer">
+                                <option value="single">Single</option>
+                                <option value="married">Married / Partnered</option>
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="input-group">
+                                <label for="currentAge">Current Age</label>
+                                <input type="number" id="currentAge" value="30" oninput="calculate()">
+                            </div>
+                            <div class="input-group">
+                                <label for="retirementAge">Retirement Age</label>
+                                <input type="number" id="retirementAge" value="60" oninput="calculate()">
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label for="yearsInRetirement">Years in Retirement</label>
+                            <input type="number" id="yearsInRetirement" value="30" oninput="calculate()">
+                        </div>
+                        <div class="input-group">
+                            <label id="salaryLabel" for="currentSalary">Current Gross Annual Salary ($)</label>
+                            <input type="number" id="currentSalary" value="80000" step="1000" oninput="calculate()">
+                        </div>
+
+                        <!-- Spouse Salary (Hidden by default) -->
+                        <div class="input-group hidden" id="spouseSalaryGroup">
+                            <label for="spouseSalary">Spouse's Gross Annual Salary ($)</label>
+                            <input type="number" id="spouseSalary" value="0" step="1000" oninput="calculate()">
+                        </div>
+
+                        <div class="input-group">
+                            <label for="currentSavings">Current Portfolio Value ($)</label>
+                            <input type="number" id="currentSavings" value="50000" step="1000" oninput="calculate()">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Financial Assumptions -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                    <h2 class="text-lg font-semibold mb-4 text-gray-800 border-b pb-2 flex items-center">
+                        <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 text-xs font-bold mr-2">2</span>
+                        Income & Plan Assumptions
+                    </h2>
+                    <div class="space-y-4">
+                        <div class="input-group">
+                            <label id="retIncomeLabel" for="retirementIncome" title="In today's dollars. The amount you want to spend annually in retirement.">Desired Retirement Income ($ Today)</label>
+                            <input type="number" id="retirementIncome" value="60000" step="1000" oninput="calculate()">
+                            <p class="text-xs text-gray-500 mt-1">Amount you need annually in today's purchasing power.</p>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="socialSecurityIncome" title="Estimated combined Social Security benefits at retirement in today's dollars.">
+                                Estimated Social Security Income ($ Today)
+                            </label>
+                            <input type="number" id="socialSecurityIncome" value="20000" step="1000" oninput="calculate()">
+                            <p class="text-xs text-gray-500 mt-1">
+                                This reduces how much your portfolio needs to cover in retirement.
+                            </p>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="input-group">
+                                <label for="inflationRate">Expected Inflation Rate (%)</label>
+                                <input type="number" id="inflationRate" value="3.0" step="0.1" oninput="calculate()">
+                            </div>
+                            <div class="input-group">
+                                <label for="withdrawalRate" title="The Safe Withdrawal Rate, typically 4%.">Safe Withdrawal Rate (%)</label>
+                                <input type="number" id="withdrawalRate" value="4.0" step="0.1" oninput="calculate()">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="input-group">
+                                <label for="employerContributionRate" title="Your employer contributions as a percent of your salary.">
+                                    Your Employer Contributions (% of Your Salary)
+                                </label>
+                                <input type="number" id="employerContributionRate" value="4.0" step="0.5" oninput="calculate()">
+                                <p class="text-xs text-gray-500 mt-1">
+                                    Match + profit sharing based on your pay.
+                                </p>
+                            </div>
+                            <div class="input-group hidden" id="spouseEmployerGroup">
+                                <label for="spouseEmployerRate" title="Your spouse's employer contributions as a percent of their salary.">
+                                    Spouse Employer Contributions (% of Their Salary)
+                                </label>
+                                <input type="number" id="spouseEmployerRate" value="4.0" step="0.5" oninput="calculate()">
+                                <p class="text-xs text-gray-500 mt-1">
+                                    Only used if married/partnered.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Portfolio Allocation -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                    <h2 class="text-lg font-semibold mb-3 text-gray-800 border-b pb-2 flex items-center">
+                        <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-purple-100 text-purple-600 text-xs font-bold mr-2">3</span>
+                        Portfolio Allocation
+                    </h2>
+                    <p class="text-sm text-gray-600 mb-3">
+                        Choose an allocation across broad asset classes. The tool calculates a blended expected return and uses it in your projections.
+                    </p>
+
+                    <div class="flex items-center justify-between text-xs font-semibold uppercase text-gray-500 mb-2">
+                        <span>Target Expected Return</span>
+                        <span class="text-blue-600" id="computedReturn">7.0%</span>
+                    </div>
+
+                    <div class="space-y-2">
+                        <div class="grid grid-cols-3 gap-2 items-center text-xs font-medium text-gray-600">
+                            <div>Asset Class</div>
+                            <div class="text-right">Assumed Return</div>
+                            <div class="text-right">Allocation %</div>
+                        </div>
+
+                        <!-- US Total Stock Market -->
+                        <div class="grid grid-cols-3 gap-2 items-center text-sm">
+                            <div>
+                                <div class="font-medium text-gray-800">US Total Stock Market</div>
+                                <div class="text-xs text-gray-500">Broad U.S. equities</div>
+                            </div>
+                            <div class="text-right text-xs text-gray-500">8.0% / yr</div>
+                            <div>
+                                <input type="number" id="allocVTI" value="50" min="0" max="100" step="1"
+                                       oninput="updatePortfolioReturn()" 
+                                       class="w-full border border-gray-200 rounded-md px-2 py-1 text-right text-sm">
+                            </div>
+                        </div>
+
+                        <!-- International Stocks -->
+                        <div class="grid grid-cols-3 gap-2 items-center text-sm">
+                            <div>
+                                <div class="font-medium text-gray-800">International Stocks</div>
+                                <div class="text-xs text-gray-500">Developed + emerging</div>
+                            </div>
+                            <div class="text-right text-xs text-gray-500">7.5% / yr</div>
+                            <div>
+                                <input type="number" id="allocVXUS" value="20" min="0" max="100" step="1"
+                                       oninput="updatePortfolioReturn()" 
+                                       class="w-full border border-gray-200 rounded-md px-2 py-1 text-right text-sm">
+                            </div>
+                        </div>
+
+                        <!-- Bond Index -->
+                        <div class="grid grid-cols-3 gap-2 items-center text-sm">
+                            <div>
+                                <div class="font-medium text-gray-800">Bond Index</div>
+                                <div class="text-xs text-gray-500">Investment-grade bonds</div>
+                            </div>
+                            <div class="text-right text-xs text-gray-500">3.0% / yr</div>
+                            <div>
+                                <input type="number" id="allocBND" value="20" min="0" max="100" step="1"
+                                       oninput="updatePortfolioReturn()" 
+                                       class="w-full border border-gray-200 rounded-md px-2 py-1 text-right text-sm">
+                            </div>
+                        </div>
+
+                        <!-- Real Estate Index -->
+                        <div class="grid grid-cols-3 gap-2 items-center text-sm">
+                            <div>
+                                <div class="font-medium text-gray-800">Real Estate Index</div>
+                                <div class="text-xs text-gray-500">Public REIT exposure</div>
+                            </div>
+                            <div class="text-right text-xs text-gray-500">6.0% / yr</div>
+                            <div>
+                                <input type="number" id="allocVNQ" value="5" min="0" max="100" step="1"
+                                       oninput="updatePortfolioReturn()" 
+                                       class="w-full border border-gray-200 rounded-md px-2 py-1 text-right text-sm">
+                            </div>
+                        </div>
+
+                        <!-- Cash / Money Market -->
+                        <div class="grid grid-cols-3 gap-2 items-center text-sm">
+                            <div>
+                                <div class="font-medium text-gray-800">Cash / Money Market</div>
+                                <div class="text-xs text-gray-500">Short-term / HYSA</div>
+                            </div>
+                            <div class="text-right text-xs text-gray-500">2.0% / yr</div>
+                            <div>
+                                <input type="number" id="allocCASH" value="5" min="0" max="100" step="1"
+                                       oninput="updatePortfolioReturn()" 
+                                       class="w-full border border-gray-200 rounded-md px-2 py-1 text-right text-sm">
+                            </div>
+                        </div>
+
+                        <!-- Total Row -->
+                        <div class="flex items-center justify-between mt-3 text-xs font-semibold">
+                            <div class="text-gray-500 uppercase tracking-wide">Total Allocation</div>
+                            <div>
+                                <span id="allocTotal" class="font-bold text-gray-700">100%</span>
+                            </div>
+                        </div>
+                        <p id="allocWarning" class="text-xs mt-1">
+                            <!-- Filled by JS -->
+                        </p>
+                    </div>
+
+                    <!-- Pie Chart -->
+                    <div class="mt-4 h-40">
+                        <canvas id="allocChart"></canvas>
+                    </div>
+
+                    <p class="text-xs text-gray-500 mt-3">
+                        Allocations <strong>must sum to 100%</strong>. The expected return is a weighted average using your percentages.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Results Section -->
+            <div class="lg:col-span-2 space-y-6">
+                
+                <!-- KPI Cards -->
+                <div class="space-y-3">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <h3 class="text-sm font-semibold text-gray-700 flex items-center">
+                            Plan Summary
+                            <span class="ml-2 inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+                                Based on your inputs
+                            </span>
+                            <span class="ml-2 inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-600">
+                                Income replacement: <span id="resReplaceRate" class="ml-1">--%</span>
+                            </span>
+                        </h3>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="result-card bg-blue-50 border-blue-500">
+                            <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Required Savings Rate</h3>
+                            <div class="mt-2 flex items-baseline">
+                                <span class="text-4xl font-extrabold text-blue-700" id="resSavingsRate">--%</span>
+                                <span class="ml-2 text-sm text-gray-600">of <span id="resSalaryType">gross salary</span></span>
+                            </div>
+                            <p class="text-sm text-gray-600 mt-1">
+                                Total savings needed: <strong id="resAnnualSavings" class="text-blue-700">$--</strong> / year (you + employer).
+                            </p>
+                            <p class="text-xs text-gray-500 mt-1">
+                                Breakdown: Total <span id="resTotalSavings">$--</span> • Employer <span id="resEmployerDollar">$--</span> • You <span id="resEmployeeDollar2">$--</span>
+                            </p>
+                            <p class="text-xs text-gray-600 mt-2 border-t pt-2">
+                                Your share after employer contributions:
+                                <span id="resEmployeeRate">--%</span>
+                                (<span id="resEmployeeDollar">$--</span> / year)
+                            </p>
+                            <p class="text-xs text-gray-500 mt-1" id="resEmployerDetail">
+                                <!-- Filled when married -->
+                            </p>
+                        </div>
+
+                        <div class="result-card bg-emerald-50 border-emerald-500">
+                            <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Target Portfolio (Nominal)</h3>
+                            <div class="mt-2 flex items-baseline">
+                                <span class="text-3xl font-bold text-emerald-700" id="resTargetPortfolio">$--</span>
+                            </div>
+                            <p class="text-xs text-gray-600 mt-1">
+                                Amount needed at age <span id="resRetAge">--</span> to support your spending plan.
+                            </p>
+                            <p class="text-xs text-gray-500 mt-1">
+                                Adj. for inflation: <span id="resInflationIncome">$--</span> annual spending.
+                            </p>
+                            <p class="text-xs text-gray-500 mt-1">
+                                FI in today's dollars (portfolio): <span id="resTargetReal">$--</span>
+                            </p>
+                            <p class="text-xs text-gray-500 mt-1">
+                                Est. Social Security (future): <span id="resSSFuture">$--</span> / yr • Portfolio covers:
+                                <span id="resNetWithdrawal">$--</span> / yr
+                            </p>
+                            <p class="text-xs text-amber-600 mt-1 hidden" id="ssCoversNote">
+                                At these assumptions, Social Security alone meets or exceeds your desired retirement income. Additional savings add safety and flexibility.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chart Container -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-gray-800">Portfolio Growth Trajectory</h3>
+                        <span class="text-xs text-gray-500 italic">
+                            Assuming constant savings and blended return from your allocation
+                        </span>
+                    </div>
+                    <div class="relative h-64 w-full" id="growthWrapper">
+                        <canvas id="growthChart"></canvas>
+                        <div id="allocOverlay" class="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center text-xs text-red-600 font-semibold hidden">
+                            Adjust portfolio allocations to 100% to see projections.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detailed Table -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Year-by-Year Breakdown</h3>
+                    <div class="table-container overflow-x-auto max-h-96 rounded-lg border border-gray-100">
+                        <table class="min-w-full text-sm text-left text-gray-500">
+                            <thead class="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0 z-10">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3">Age</th>
+                                    <th scope="col" class="px-6 py-3">Year</th>
+                                    <th scope="col" class="px-6 py-3">Start Balance</th>
+                                    <th scope="col" class="px-6 py-3">Cash Flow (+/-)</th>
+                                    <th scope="col" class="px-6 py-3">Investment Growth</th>
+                                    <th scope="col" class="px-6 py-3">End Balance</th>
+                                </tr>
+                            </thead>
+                            <tbody id="breakdownTableBody">
+                                <!-- Rows generated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Assumptions Note -->
+                <div class="bg-gray-50 border border-gray-200 p-5 rounded-xl text-sm text-gray-600">
+                    <h4 class="font-bold text-gray-800 mb-2 flex items-center">
+                        <svg class="w-4 h-4 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        Key Assumptions & Methodology
+                    </h4>
+                    <ul class="list-disc pl-5 space-y-2">
+                        <li><strong>Salary Growth:</strong> The calculator assumes your salary—and therefore your dollar contribution amounts—will grow annually at the same rate as inflation. This keeps your savings effort constant as a % of income.</li>
+                        <li><strong>Retirement Withdrawals:</strong> Your desired retirement income and Social Security estimate are inflated into the future. The portfolio only needs to cover the gap between the two.</li>
+                        <li><strong>Nominal Values:</strong> The table displays nominal values (future dollars), i.e., the amounts you would actually see in your accounts in those years.</li>
+                        <li><strong>Employer Contributions:</strong> Your and your spouse's employer contributions are treated as part of the annual savings, reducing what you personally need to contribute.</li>
+                        <li><strong>Portfolio Return:</strong> Expected annual return is calculated as a weighted average of the broad asset classes you select in the allocation panel.</li>
+                    </ul>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let myChart = null;
+        let allocChart = null;
+
+        function formatCurrency(num) {
+            if (!isFinite(num)) return '$--';
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                maximumFractionDigits: 0
+            }).format(num);
+        }
+
+        function clampValue(val, min, max) {
+            if (!isFinite(val)) return min;
+            return Math.min(Math.max(val, min), max);
+        }
+
+        function toggleSpouse() {
+            const status = document.getElementById('maritalStatus').value;
+            const spouseGroup = document.getElementById('spouseSalaryGroup');
+            const salaryLabel = document.getElementById('salaryLabel');
+            const retIncomeLabel = document.getElementById('retIncomeLabel');
+            const resSalaryType = document.getElementById('resSalaryType');
+            const spouseEmployerGroup = document.getElementById('spouseEmployerGroup');
+
+            if (status === 'married') {
+                spouseGroup.classList.remove('hidden');
+                spouseEmployerGroup.classList.remove('hidden');
+                salaryLabel.innerText = "Your Gross Annual Salary ($)";
+                retIncomeLabel.innerText = "Desired Joint Retirement Income ($ Today)";
+                resSalaryType.innerText = "household income";
+            } else {
+                spouseGroup.classList.add('hidden');
+                spouseEmployerGroup.classList.add('hidden');
+                salaryLabel.innerText = "Current Gross Annual Salary ($)";
+                retIncomeLabel.innerText = "Desired Retirement Income ($ Today)";
+                resSalaryType.innerText = "gross salary";
+            }
+        }
+
+        function getPortfolioStats() {
+            // Asset classes with assumed returns (% per year) and labels
+            const assets = [
+                { id: 'allocVTI', er: 8.0, label: 'US Total Stock Market' },
+                { id: 'allocVXUS', er: 7.5, label: 'International Stocks' },
+                { id: 'allocBND', er: 3.0, label: 'Bond Index' },
+                { id: 'allocVNQ', er: 6.0, label: 'Real Estate Index' },
+                { id: 'allocCASH', er: 2.0, label: 'Cash / Money Market' },
+            ];
+
+            let totalAlloc = 0;
+            let weightedReturn = 0;
+
+            const chartLabels = [];
+            const chartValues = [];
+
+            assets.forEach(a => {
+                const el = document.getElementById(a.id);
+                let val = parseFloat(el.value);
+                if (!isFinite(val)) val = 0;
+                if (val < 0) val = 0;
+                if (val > 100) val = 100;
+                el.value = val; // clamp UI value
+                totalAlloc += val;
+                weightedReturn += val * a.er;
+
+                if (val > 0) {
+                    chartLabels.push(a.label);
+                    chartValues.push(val);
+                }
+            });
+
+            let blendedDecimal = 0;
+            if (totalAlloc > 0) {
+                const blendedPercent = weightedReturn / totalAlloc;
+                blendedDecimal = blendedPercent / 100;
+            }
+
+            return {
+                blendedReturnDecimal: blendedDecimal,
+                totalAlloc,
+                chartLabels,
+                chartValues
+            };
+        }
+
+        function updateAllocChart(labels, values) {
+            const ctx = document.getElementById('allocChart').getContext('2d');
+            if (allocChart) {
+                allocChart.destroy();
+            }
+
+            if (labels.length === 0) {
+                allocChart = null;
+                return;
+            }
+
+            allocChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: { usePointStyle: true }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updatePortfolioReturn() {
+            const stats = getPortfolioStats();
+            const r = stats.blendedReturnDecimal;
+            const display = document.getElementById('computedReturn');
+            display.textContent = (r * 100).toFixed(1) + '%';
+
+            const totalEl = document.getElementById('allocTotal');
+            const warningEl = document.getElementById('allocWarning');
+
+            totalEl.textContent = stats.totalAlloc.toFixed(0) + '%';
+
+            if (Math.abs(stats.totalAlloc - 100) > 0.5) {
+                warningEl.textContent = 'Allocations must sum to 100% to run projections.';
+                warningEl.classList.remove('text-green-600');
+                warningEl.classList.add('text-red-600');
+            } else {
+                warningEl.textContent = 'Allocations sum to 100%.';
+                warningEl.classList.remove('text-red-600');
+                warningEl.classList.add('text-green-600');
+            }
+
+            updateAllocChart(stats.chartLabels, stats.chartValues);
+
+            // Recalculate main plan when allocation changes
+            calculate();
+        }
+
+        function computePlan() {
+            const stats = getPortfolioStats();
+
+            // Enforce allocations = 100%
+            if (Math.abs(stats.totalAlloc - 100) > 0.5) {
+                return { invalid: true, reason: 'alloc' };
+            }
+
+            // Ages with basic guardrails
+            let currentAge = parseFloat(document.getElementById('currentAge').value);
+            if (!isFinite(currentAge)) currentAge = 30;
+            currentAge = clampValue(currentAge, 18, 80);
+            document.getElementById('currentAge').value = currentAge;
+
+            let retirementAge = parseFloat(document.getElementById('retirementAge').value);
+            if (!isFinite(retirementAge)) retirementAge = 60;
+            retirementAge = clampValue(retirementAge, currentAge + 1, 80);
+            document.getElementById('retirementAge').value = retirementAge;
+
+            let yearsInRetirement = parseFloat(document.getElementById('yearsInRetirement').value);
+            if (!isFinite(yearsInRetirement)) yearsInRetirement = 30;
+            yearsInRetirement = clampValue(yearsInRetirement, 5, 50);
+            document.getElementById('yearsInRetirement').value = yearsInRetirement;
+
+            const userSalaryRaw = parseFloat(document.getElementById('currentSalary').value);
+            const userSalary = Math.max(userSalaryRaw || 0, 0);
+
+            const maritalStatus = document.getElementById('maritalStatus').value;
+            let spouseSalaryRaw = 0;
+            let spouseSalary = 0;
+            if (maritalStatus === 'married') {
+                spouseSalaryRaw = parseFloat(document.getElementById('spouseSalary').value);
+                spouseSalary = Math.max(spouseSalaryRaw || 0, 0);
+            }
+            const totalSalary = userSalary + spouseSalary;
+
+            const currentSavingsRaw = parseFloat(document.getElementById('currentSavings').value);
+            const currentSavings = Math.max(currentSavingsRaw || 0, 0);
+
+            const retirementIncomeTodayRaw = parseFloat(document.getElementById('retirementIncome').value);
+            const retirementIncomeToday = Math.max(retirementIncomeTodayRaw || 0, 0);
+
+            const socialSecurityTodayRaw = parseFloat(document.getElementById('socialSecurityIncome').value);
+            const socialSecurityToday = Math.max(socialSecurityTodayRaw || 0, 0);
+
+            // Rates with guardrails
+            let inflationRateInput = (parseFloat(document.getElementById('inflationRate').value) || 0) / 100;
+            inflationRateInput = clampValue(inflationRateInput, 0, 0.10);
+            document.getElementById('inflationRate').value = (inflationRateInput * 100).toFixed(1);
+
+            let withdrawalRateInput = (parseFloat(document.getElementById('withdrawalRate').value) || 0) / 100;
+            withdrawalRateInput = clampValue(withdrawalRateInput, 0.02, 0.06);
+            document.getElementById('withdrawalRate').value = (withdrawalRateInput * 100).toFixed(1);
+
+            let employerContributionRateSelf = (parseFloat(document.getElementById('employerContributionRate').value) || 0) / 100;
+            employerContributionRateSelf = clampValue(employerContributionRateSelf, 0, 0.20);
+            document.getElementById('employerContributionRate').value = (employerContributionRateSelf * 100).toFixed(1);
+
+            let spouseEmployerRate = 0;
+            if (maritalStatus === 'married') {
+                spouseEmployerRate = (parseFloat(document.getElementById('spouseEmployerRate').value) || 0) / 100;
+                spouseEmployerRate = clampValue(spouseEmployerRate, 0, 0.20);
+                document.getElementById('spouseEmployerRate').value = (spouseEmployerRate * 100).toFixed(1);
+            }
+
+            const marketReturnInput = stats.blendedReturnDecimal; // decimal from allocation
+
+            if (retirementAge <= currentAge || withdrawalRateInput <= 0) {
+                return { invalid: true, reason: 'ages' };
+            }
+
+            if (totalSalary <= 0) {
+                return { invalid: true, reason: 'salary' };
+            }
+
+            const yearsToGrow = retirementAge - currentAge;
+
+            const effMarketReturn = marketReturnInput;
+            const effInflation = inflationRateInput;
+
+            // Income & Social Security at retirement (nominal)
+            const futureAnnualIncomeNeeded = retirementIncomeToday * Math.pow(1 + effInflation, yearsToGrow);
+            const futureSS = socialSecurityToday * Math.pow(1 + effInflation, yearsToGrow);
+
+            let netFutureWithdrawal = Math.max(futureAnnualIncomeNeeded - futureSS, 0);
+            const ssFullyCovers = futureAnnualIncomeNeeded <= futureSS + 1e-6;
+
+            // Target portfolio using safe withdrawal rate
+            let targetPortfolio = netFutureWithdrawal > 0 ? (netFutureWithdrawal / withdrawalRateInput) : 0;
+
+            // Future value of current savings
+            const fvCurrentSavings = currentSavings * Math.pow(1 + effMarketReturn, yearsToGrow);
+
+            let shortfall = targetPortfolio - fvCurrentSavings;
+            if (shortfall < 0) shortfall = 0;
+
+            let firstYearSavings = 0;
+            if (shortfall > 0) {
+                const r = effMarketReturn;
+                const g = effInflation;
+                if (Math.abs(r - g) < 0.0001) {
+                    firstYearSavings = shortfall / (yearsToGrow * Math.pow(1 + r, yearsToGrow - 1));
+                } else {
+                    const numerator = shortfall * (r - g);
+                    const denominator = Math.pow(1 + r, yearsToGrow) - Math.pow(1 + g, yearsToGrow);
+                    firstYearSavings = numerator / denominator;
+                }
+            }
+
+            if (!isFinite(firstYearSavings) || firstYearSavings < 0) firstYearSavings = 0;
+
+            const selfEmployerDollar = userSalary * employerContributionRateSelf;
+            const spouseEmployerDollar = spouseSalary * spouseEmployerRate;
+            const employerContributionDollar = selfEmployerDollar + spouseEmployerDollar;
+
+            const employeeRequiredDollar = Math.max(firstYearSavings - employerContributionDollar, 0);
+
+            const savingsRate = totalSalary > 0 ? (firstYearSavings / totalSalary) * 100 : 0;
+            const employeeRate = totalSalary > 0 ? (employeeRequiredDollar / totalSalary) * 100 : 0;
+
+            const targetPortfolioReal = targetPortfolio / Math.pow(1 + effInflation, yearsToGrow);
+            const incomeReplacementRatio = totalSalary > 0 ? (retirementIncomeToday / totalSalary) : 0;
+
+            const employerSelfRate = userSalary > 0 ? employerContributionRateSelf * 100 : 0;
+            const employerSpouseRate = spouseSalary > 0 ? spouseEmployerRate * 100 : 0;
+
+            return {
+                invalid: false,
+                currentAge,
+                retirementAge,
+                yearsInRetirement,
+                yearsToGrow,
+                totalSalary,
+                currentSavings,
+                effMarketReturn,
+                effInflation,
+                withdrawalRate: withdrawalRateInput,
+                retirementIncomeToday,
+                socialSecurityToday,
+                futureAnnualIncomeNeeded,
+                futureSS,
+                netFutureWithdrawal,
+                targetPortfolio,
+                targetPortfolioReal,
+                fvCurrentSavings,
+                firstYearSavings,
+                savingsRate,
+                employerContributionRateSelf,
+                spouseEmployerRate,
+                employerContributionDollar,
+                selfEmployerDollar,
+                spouseEmployerDollar,
+                employeeRequiredDollar,
+                employeeRate,
+                incomeReplacementRatio,
+                ssFullyCovers,
+                employerSelfRate,
+                employerSpouseRate,
+                maritalStatus
+            };
+        }
+
+        function calculate() {
+            const plan = computePlan();
+            renderPlan(plan);
+        }
+
+        function renderPlan(plan) {
+            const resSavingsRate = document.getElementById('resSavingsRate');
+            const resAnnualSavings = document.getElementById('resAnnualSavings');
+            const resTargetPortfolio = document.getElementById('resTargetPortfolio');
+            const resRetAge = document.getElementById('resRetAge');
+            const resInflationIncome = document.getElementById('resInflationIncome');
+            const resSSFuture = document.getElementById('resSSFuture');
+            const resNetWithdrawal = document.getElementById('resNetWithdrawal');
+            const resEmployeeRate = document.getElementById('resEmployeeRate');
+            const resEmployeeDollar = document.getElementById('resEmployeeDollar');
+            const resEmployeeDollar2 = document.getElementById('resEmployeeDollar2');
+            const resEmployerDollar = document.getElementById('resEmployerDollar');
+            const resTotalSavings = document.getElementById('resTotalSavings');
+            const resEmployerDetail = document.getElementById('resEmployerDetail');
+            const resTargetReal = document.getElementById('resTargetReal');
+            const resReplaceRate = document.getElementById('resReplaceRate');
+            const ssCoversNote = document.getElementById('ssCoversNote');
+            const tableBody = document.getElementById('breakdownTableBody');
+            const allocOverlay = document.getElementById('allocOverlay');
+
+            // Default: hide overlay & SS note
+            if (allocOverlay) allocOverlay.classList.add('hidden');
+            if (ssCoversNote) ssCoversNote.classList.add('hidden');
+
+            if (plan.invalid) {
+                let msg = "Check inputs";
+                if (plan.reason === 'alloc') {
+                    msg = "Fix allocation (must = 100%)";
+                    if (allocOverlay) allocOverlay.classList.remove('hidden');
+                } else if (plan.reason === 'ages') {
+                    msg = "Check ages / SWR";
+                } else if (plan.reason === 'salary') {
+                    msg = "Enter at least one positive salary";
+                }
+
+                resSavingsRate.innerText = "N/A";
+                resAnnualSavings.innerText = msg;
+                resTargetPortfolio.innerText = "$--";
+                resRetAge.innerText = "--";
+                resInflationIncome.innerText = "$--";
+                resSSFuture.innerText = "$--";
+                resNetWithdrawal.innerText = "$--";
+                resEmployeeRate.innerText = "--%";
+                resEmployeeDollar.innerText = "$--";
+                resEmployeeDollar2.innerText = "$--";
+                resEmployerDollar.innerText = "$--";
+                resTotalSavings.innerText = "$--";
+                resTargetReal.innerText = "$--";
+                resReplaceRate.innerText = "--%";
+                resEmployerDetail.textContent = "";
+
+                tableBody.innerHTML = "";
+                if (myChart) {
+                    myChart.destroy();
+                    myChart = null;
+                }
+                return;
+            }
+
+            // Savings rate display
+            let rateDisplay = plan.savingsRate.toFixed(1) + "%";
+            if (plan.savingsRate > 100) rateDisplay = "> 100%";
+            if (plan.savingsRate < 0) rateDisplay = "0%";
+            if (plan.totalSalary === 0) rateDisplay = "N/A";
+
+            resSavingsRate.innerText = rateDisplay;
+            resAnnualSavings.innerText = formatCurrency(plan.firstYearSavings);
+            resTargetPortfolio.innerText = formatCurrency(plan.targetPortfolio);
+            resRetAge.innerText = plan.retirementAge;
+            resInflationIncome.innerText = formatCurrency(plan.futureAnnualIncomeNeeded);
+            resSSFuture.innerText = formatCurrency(plan.futureSS);
+
+            // FI in today's dollars
+            resTargetReal.innerText = formatCurrency(plan.targetPortfolioReal);
+
+            // Net withdrawal coverage
+            if (plan.ssFullyCovers) {
+                resNetWithdrawal.innerText = formatCurrency(plan.netFutureWithdrawal);
+                if (ssCoversNote) ssCoversNote.classList.remove('hidden');
+            } else {
+                resNetWithdrawal.innerText = formatCurrency(plan.netFutureWithdrawal);
+            }
+
+            // Contribution breakdown
+            const totalSavings = plan.firstYearSavings;
+            resTotalSavings.innerText = formatCurrency(totalSavings);
+            resEmployerDollar.innerText = formatCurrency(plan.employerContributionDollar);
+            resEmployeeDollar.innerText = formatCurrency(plan.employeeRequiredDollar);
+            resEmployeeDollar2.innerText = formatCurrency(plan.employeeRequiredDollar);
+
+            let empRateDisplay = plan.employeeRate.toFixed(1) + "%";
+            if (plan.employeeRate > 100) empRateDisplay = "> 100%";
+            if (plan.employeeRate < 0) empRateDisplay = "0%";
+            if (plan.totalSalary === 0) empRateDisplay = "N/A";
+
+            resEmployeeRate.innerText = empRateDisplay;
+
+            // Employer detail line (when married)
+            if (plan.maritalStatus === 'married') {
+                const parts = [];
+                if (plan.employerSelfRate > 0) {
+                    parts.push(`Employer puts about ${plan.employerSelfRate.toFixed(1)}% of your pay into retirement.`);
+                }
+                if (plan.employerSpouseRate > 0) {
+                    parts.push(`Spouse's employer contributes ~${plan.employerSpouseRate.toFixed(1)}% of their pay.`);
+                }
+                resEmployerDetail.textContent = parts.join(' ');
+            } else {
+                resEmployerDetail.textContent = "";
+            }
+
+            // Income replacement rate
+            const repPct = plan.incomeReplacementRatio * 100;
+            if (repPct > 0 && isFinite(repPct)) {
+                resReplaceRate.innerText = repPct.toFixed(0) + "%";
+            } else {
+                resReplaceRate.innerText = "--%";
+            }
+
+            // Generate breakdown + chart
+            generateBreakdown(
+                plan.currentAge,
+                plan.retirementAge,
+                plan.yearsInRetirement,
+                plan.currentSavings,
+                plan.firstYearSavings,
+                plan.effMarketReturn,
+                plan.effInflation,
+                plan.targetPortfolio,
+                plan.netFutureWithdrawal
+            );
+        }
+
+        function generateBreakdown(startAge, retAge, yearsRet, startBal, firstYearSav, returnRate, inflationRate, target, initialNetWithdrawal) {
+            const tableBody = document.getElementById('breakdownTableBody');
+            tableBody.innerHTML = ""; // Clear existing
+
+            let balance = startBal;
+            let contribution = firstYearSav;
+            let currentYear = new Date().getFullYear();
+            let withdrawal = initialNetWithdrawal;
+
+            const labels = [];
+            const dataBalance = [];
+            const dataTarget = [];
+
+            // Accumulation phase
+            for (let age = startAge; age < retAge; age++) {
+                const row = document.createElement('tr');
+                row.className = "bg-white border-b hover:bg-gray-50 transition";
+
+                let investmentGrowth = balance * returnRate;
+                let endBalance = balance + investmentGrowth + contribution;
+
+                row.innerHTML = `
+                    <td class="px-6 py-4 font-medium text-gray-900">${age}</td>
+                    <td class="px-6 py-4">${currentYear}</td>
+                    <td class="px-6 py-4">${formatCurrency(balance)}</td>
+                    <td class="px-6 py-4 text-green-600">+${formatCurrency(contribution)}</td>
+                    <td class="px-6 py-4 text-blue-600">+${formatCurrency(investmentGrowth)}</td>
+                    <td class="px-6 py-4 font-bold">${formatCurrency(endBalance)}</td>
+                `;
+                tableBody.appendChild(row);
+
+                labels.push(age);
+                dataBalance.push(balance);
+                dataTarget.push(target); 
+
+                balance = endBalance;
+                contribution = contribution * (1 + inflationRate);
+                currentYear++;
+            }
+
+            // Retirement phase
+            const endAge = retAge + yearsRet;
+
+            const separatorRow = document.createElement('tr');
+            separatorRow.className = "bg-blue-100 font-bold";
+            separatorRow.innerHTML = `<td colspan="6" class="px-6 py-2 text-center text-blue-800">RETIREMENT STARTED</td>`;
+            tableBody.appendChild(separatorRow);
+
+            for (let age = retAge; age <= endAge; age++) {
+                const row = document.createElement('tr');
+                row.className = "bg-orange-50 border-b hover:bg-orange-100 transition";
+
+                let investmentGrowth = balance * returnRate;
+                let endBalance = balance + investmentGrowth - withdrawal;
+
+                if (balance <= 0) {
+                    balance = 0;
+                    endBalance = 0;
+                    investmentGrowth = 0;
+                    withdrawal = 0;
+                }
+
+                row.innerHTML = `
+                    <td class="px-6 py-4 font-medium text-gray-900">${age}</td>
+                    <td class="px-6 py-4">${currentYear}</td>
+                    <td class="px-6 py-4">${formatCurrency(balance)}</td>
+                    <td class="px-6 py-4 text-red-600">-${formatCurrency(withdrawal)}</td>
+                    <td class="px-6 py-4 text-blue-600">+${formatCurrency(investmentGrowth)}</td>
+                    <td class="px-6 py-4 font-bold ${endBalance < 0 ? 'text-red-600' : ''}">${formatCurrency(endBalance)}</td>
+                `;
+                tableBody.appendChild(row);
+
+                labels.push(age);
+                dataBalance.push(balance);
+                dataTarget.push(target); 
+
+                balance = endBalance;
+                withdrawal = withdrawal * (1 + inflationRate);
+                currentYear++;
+            }
+
+            updateChart(labels, dataBalance, target);
+        }
+
+        function updateChart(labels, data, targetLine) {
+            const ctx = document.getElementById('growthChart').getContext('2d');
+            const targetData = new Array(labels.length).fill(targetLine);
+
+            if (myChart) {
+                myChart.destroy();
+            }
+
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Portfolio Balance',
+                            data: data,
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.12)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.3,
+                            pointRadius: 0
+                        },
+                        {
+                            label: 'Target Goal',
+                            data: targetData,
+                            borderColor: '#10b981',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            pointRadius: 0,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    if (value >= 1000000) return '$' + (value/1000000).toFixed(1) + 'M';
+                                    if (value >= 1000) return '$' + (value/1000).toFixed(0) + 'k';
+                                    return '$' + value;
+                                }
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Age'
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) label += ': ';
+                                    if (context.parsed.y !== null) {
+                                        label += new Intl.NumberFormat('en-US', {
+                                            style: 'currency',
+                                            currency: 'USD'
+                                        }).format(context.parsed.y);
+                                    }
+                                    return label;
+                                }
+                            }
+                        },
+                        legend: {
+                            labels: {
+                                usePointStyle: true
+                            }
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    }
+                }
+            });
+        }
+
+        // Initialize on load
+        toggleSpouse();
+        updatePortfolioReturn();
+    </script>
+</body>
+</html>
